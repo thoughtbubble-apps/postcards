@@ -20,3 +20,14 @@
 
 # lighthouse
 .lighthouseci/*
+
+.wrangler/
+node_modules/
+
+test-results/
+playwright-report/
+
+.delivery-manifest.json
+.lighthouseci/
+cypress/screenshots/
+cypress/videos/
