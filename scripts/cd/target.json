@@ -12,9 +12,6 @@
   "compatibilityDate": "2026-10-01",
   "productionEnabled": false,
   "productionName": "postcards",
-  "previewTargets": {
-    "14": "postcards-pr-14"
-  },
   "assetDirectory": "build",
   "assetRoots": [
     "index.html",
@@ -42,5 +39,22 @@
     },
     "redact_query_string": true
   },
-  "lighthouse": true
+  "lighthouse": true,
+  "sourceTargets": {
+    "14": {
+      "targetPrNumber": 14,
+      "workerName": "postcards-pr-14",
+      "headRef": "codex/cloudflare-delivery"
+    },
+    "15": {
+      "targetPrNumber": 14,
+      "workerName": "postcards-pr-14",
+      "headRef": "codex/trusted-worker-delivery-source"
+    }
+  },
+  "stackedSource": {
+    "prNumber": 15,
+    "baseRef": "codex/cloudflare-delivery",
+    "headRef": "codex/trusted-worker-delivery-source"
+  }
 }
