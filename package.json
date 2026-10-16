@@ -8,7 +8,10 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:worker": "node --test tests/worker.test.mjs",
+    "test:browser": "node scripts/test-browser.mjs",
+    "test:lighthouse": "lhci autorun"
   },
   "dependencies": {
     "leaflet": "^1.9.4",
@@ -28,7 +31,11 @@
     "jsdom": "^26.0.0",
     "typescript": "^5.7.3",
     "vite": "^6.3.2",
-    "vitest": "^3.1.2"
+    "vitest": "^3.1.2",
+    "wrangler": "4.151.0",
+    "cypress": "16.1.1",
+    "@lhci/cli": "0.15.1",
+    "@playwright/test": "1.58.2"
   },
   "browserslist": {
     "production": [
