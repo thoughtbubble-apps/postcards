@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:worker": "node --test tests/worker.test.mjs",
+    "test:worker": "node --test tests/worker.test.mjs tests/readiness.test.mjs",
     "test:browser": "node scripts/test-browser.mjs",
     "test:lighthouse": "lhci autorun"
   },
