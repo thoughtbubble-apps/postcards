@@ -15,13 +15,15 @@ describe("Postcard Worker",()=>{
     expect(manifest.start_url).to.equal(doc.location.origin+"/");
     expect(manifest.icons.every(icon=>new URL(icon.src).origin===doc.location.origin)).to.equal(true);
    });
-   cy.get('[aria-label="Click to flip postcard"]').click();
+   cy.get('[aria-label="Postcard image URL"]').focus().type('{enter}');
+   cy.get('.leaflet-container').should('not.exist');
+   cy.get('[aria-label="Click to flip postcard"]').focus().type('{enter}');
    cy.contains("button","Use my location").click();cy.get("@location").should("have.been.calledOnce");
    cy.get(".leaflet-container").should("be.visible");
    cy.get('[aria-label="Your message"]').clear().type("Fixture postcard from Oahu");
    cy.get('[aria-label="Recipient name"]').clear().type("Test Recipient");
    cy.get('[aria-label="Share link"]').invoke("val").then(link=>{
-    expect(link).to.contain("?card=");cy.get('[aria-label="Copy link"]').click();cy.get("@copy").should("have.been.calledWith",link);cy.visit(link);cy.get('[aria-label="Click to flip postcard"]').click();
+    expect(link).to.contain("?card=");cy.get('[aria-label="Copy link"]').click();cy.get("@copy").should("have.been.calledWith",link);cy.visit(link);cy.get('[aria-label="Click to flip postcard"]').focus().type(' ');
     cy.contains("Fixture postcard from Oahu").should("exist");
     cy.contains("Test Recipient").should("exist");
    });

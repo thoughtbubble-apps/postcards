@@ -355,6 +355,21 @@ function App() {
 				<div
 					className="flip-card"
 					onClick={handleFlip}
+					onKeyDown={(e) => {
+						if (e.target !== e.currentTarget) return;
+						if (e.key === "Enter") {
+							e.preventDefault();
+							if (!e.repeat) handleFlip();
+						} else if (e.key === " ") {
+							e.preventDefault();
+						}
+					}}
+					onKeyUp={(e) => {
+						if (e.target === e.currentTarget && e.key === " ") {
+							e.preventDefault();
+							handleFlip();
+						}
+					}}
 					role="button"
 					aria-label="Click to flip postcard"
 					tabIndex={0}
@@ -370,7 +385,10 @@ function App() {
 									src={state.frontImage}
                                     srcSet={state.frontImage === defaultImage ? defaultImageVariants : undefined}
                                     sizes={state.frontImage === defaultImage ? "(min-width: 900px) 840px, calc(100vw - 18px)" : undefined}
-                                    width={840} height={530} fetchPriority="high" decoding="async"
+									width={840}
+									height={530}
+									fetchPriority="high"
+									decoding="async"
 									alt="Postcard front"
 								/>
 								{state.isDefaultCard && !flip && (
