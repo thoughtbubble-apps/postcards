@@ -1,0 +1,46 @@
+{
+  "service": "postcards",
+  "repository": "thoughtbubble-apps/postcards",
+  "repositoryId": 277046734,
+  "ownerId": 316414074,
+  "branch": "master",
+  "workflowId": 386132581,
+  "workflowName": "Cloudflare delivery",
+  "workflowPath": ".github/workflows/cloudflare.yml",
+  "accountId": "39294887f3cbf359bcdce0d9326f9382",
+  "canonicalHost": "postcardpop.briansunter.com",
+  "compatibilityDate": "2026-10-01",
+  "productionEnabled": false,
+  "productionName": "postcards",
+  "previewTargets": {
+    "14": "postcards-pr-14"
+  },
+  "assetDirectory": "build",
+  "assetRoots": [
+    "index.html",
+    "android-chrome-192x192.png",
+    "android-chrome-512x512.png",
+    "apple-touch-icon.png",
+    "favicon-16x16.png",
+    "favicon-32x32.png",
+    "favicon.ico",
+    "manifest.json",
+    "robots.txt",
+    "sitemap.xml"
+  ],
+  "assetDirectories": [
+    "assets",
+    "images"
+  ],
+  "assetMetadata": {},
+  "responseHeaders": {},
+  "observability": {
+    "enabled": true,
+    "logs": {
+      "enabled": true,
+      "invocation_logs": true
+    },
+    "redact_query_string": true
+  },
+  "lighthouse": true
+}
