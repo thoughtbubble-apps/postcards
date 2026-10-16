@@ -64,6 +64,27 @@ test("custom photo URLs retain their source without default-image variants",()=>
  expect(screen.getByAltText("Postcard front")).toHaveAttribute("src","https://example.com/fixture.png");expect(screen.getByAltText("Postcard front")).not.toHaveAttribute("srcset");
 });
 
+test("postcard front reserves its layout dimensions and decodes asynchronously",()=>{
+ render(<App/>);const image=screen.getByAltText("Postcard front");
+ expect(image).toHaveAttribute("width","840");expect(image).toHaveAttribute("height","530");expect(image).toHaveAttribute("decoding","async");
+});
+
+test("keyboard activates the postcard with Enter and Space",async()=>{
+ localStorage.setItem("pc:seenTutorial","true");render(<App/>);
+ const card=screen.getByRole("button",{name:"Click to flip postcard"});
+ fireEvent.keyDown(card,{key:"Enter"});
+ expect(await screen.findByRole("textbox",{name:"Your message"})).toBeInTheDocument();
+ fireEvent.keyDown(card,{key:" "});
+ fireEvent.keyUp(card,{key:" "});
+ expect(await screen.findByRole("textbox",{name:"Postcard image URL"})).toBeInTheDocument();
+});
+
+test("Enter in a postcard input does not activate the card",()=>{
+ localStorage.setItem("pc:seenTutorial","true");render(<App/>);
+ fireEvent.keyDown(screen.getByRole("textbox",{name:"Postcard image URL"}),{key:"Enter"});
+ expect(screen.queryByRole("textbox",{name:"Your message"})).not.toBeInTheDocument();
+});
+
 test("denied location leaves manual city input available",()=>{
  localStorage.setItem("pc:seenTutorial","true");mockGeolocation.getCurrentPosition.mockImplementation((_success,error)=>error({code:1}));render(<App/>);
  fireEvent.click(screen.getByRole("button",{name:"Click to flip postcard"}));fireEvent.click(screen.getByRole("button",{name:"Use my location"}));
