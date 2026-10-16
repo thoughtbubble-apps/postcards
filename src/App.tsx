@@ -1,8 +1,6 @@
 import type { LatLngTuple } from "leaflet";
-import { useEffect, useRef, useState } from "react";
-import { MapContainer, TileLayer, useMap } from "react-leaflet";
-
-import "leaflet/dist/leaflet.css";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
+const StampMap = lazy(() => import("./StampMap"));
 
 import "./App.css";
 
@@ -17,26 +15,8 @@ interface URLData {
 	isDefaultCard: boolean;
 }
 
-function MapUpdater({ position }: { position: LatLngTuple }) {
-	const map = useMap();
-	useEffect(() => {
-		map.setView(position, 9);
-	}, [map, position]);
-
-	useEffect(() => {
-		const invalidate = () => {
-			// Tiles can mis-render after viewport size or orientation change.
-			setTimeout(() => map.invalidateSize(), 150);
-		};
-		window.addEventListener("resize", invalidate);
-		window.addEventListener("orientationchange", invalidate);
-		return () => {
-			window.removeEventListener("resize", invalidate);
-			window.removeEventListener("orientationchange", invalidate);
-		};
-	}, [map]);
-	return null;
-}
+const defaultImage = new URL(`${import.meta.env.BASE_URL}images/alps-840.avif`, window.location.href).href;
+const defaultImageVariants = [400, 700, 840, 1680].map(width => `${new URL(`${import.meta.env.BASE_URL}images/alps-${width}.avif`, window.location.href).href} ${width}w`).join(", ");
 
 // Geocoding function using Nominatim
 async function geocodeAddress(
@@ -89,8 +69,7 @@ function App() {
 
 	const messagePlaceholder = "Write your message here...";
 	const defaultUrlData: URLData = {
-		frontImage:
-			"https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80",
+		frontImage: defaultImage,
 		latitude: 42.3528,
 		longitude: -83.1421,
 		message: "",
@@ -103,11 +82,13 @@ function App() {
 	const [flip, setFlip] = useState(false);
 	const [copied, setCopied] = useState(false);
 	const [isGeocoding, setIsGeocoding] = useState(false);
+    const [locationError, setLocationError] = useState("");
 	const [flipHintHidden, setFlipHintHidden] = useState(false);
 
 	const [state, setState] = useState(defaultUrlData);
 
 	useEffect(() => {
+		if (!urlDataString) return;
 		try {
 			const urlData: URLData = JSON.parse(urlDataString);
 			setState({ ...urlData, isDefaultCard: false });
@@ -116,19 +97,13 @@ function App() {
 		}
 	}, [urlDataString]);
 
-	const isDefaultCard = state.isDefaultCard;
-
-	useEffect(() => {
-		if (isDefaultCard) {
-			navigator.geolocation.getCurrentPosition((position) => {
-				setState((s) => ({
-					...s,
-					longitude: position.coords.longitude,
-					latitude: position.coords.latitude,
-				}));
-			});
-		}
-	}, [isDefaultCard]);
+    const useMyLocation = () => {
+        setLocationError("");
+        if (!navigator.geolocation) {setLocationError("Location is unavailable. Enter a city instead."); return;}
+        navigator.geolocation.getCurrentPosition(position => {
+            setState(s => ({...s, longitude: position.coords.longitude, latitude: position.coords.latitude}));
+        }, () => setLocationError("Could not access your location. Enter a city instead."));
+    };
 
 	const alreadySeenTutorial =
 		localStorage.getItem("pc:seenTutorial") === "true";
@@ -307,7 +282,7 @@ function App() {
 							)}
 						</div>
 
-						<div className="tutorial-progress" role="progressbar">
+						<div className="tutorial-progress" role="progressbar" aria-label="Tutorial progress" aria-valuemin={1} aria-valuemax={steps.length} aria-valuenow={currentStep + 1}>
 							{steps.map((_, idx) => (
 								<div
 									key={idx}
@@ -393,6 +368,9 @@ function App() {
 								<img
 									className="front-img"
 									src={state.frontImage}
+                                    srcSet={state.frontImage === defaultImage ? defaultImageVariants : undefined}
+                                    sizes={state.frontImage === defaultImage ? "(min-width: 900px) 840px, calc(100vw - 18px)" : undefined}
+                                    width={840} height={530} fetchPriority="high" decoding="async"
 									alt="Postcard front"
 								/>
 								{state.isDefaultCard && !flip && (
@@ -462,19 +440,9 @@ function App() {
 											}}
 										>
 											<div className="stamp-border" />
-											<MapContainer
-												className="stamp-map"
-												center={position}
-												zoom={9}
-												zoomControl={false}
-												scrollWheelZoom={false}
-											>
-												<MapUpdater position={position} />
-												<TileLayer
-													url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-													attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>'
-												/>
-											</MapContainer>
+<Suspense fallback={<div className="stamp-map" role="status">Loading map…</div>}>
+                                                <StampMap position={position} />
+                                            </Suspense>
 											{isGeocoding && (
 												<div className="stamp-loading">
 													<div className="loading-spinner" />
@@ -527,6 +495,8 @@ function App() {
 													aria-label="Location"
 												/>
 												<span className="location-hint">↵</span>
+                                                <button type="button" className="location-button" onClick={e => {e.stopPropagation(); useMyLocation();}}>Use my location</button>
+                                                {locationError && <span role="status">{locationError}</span>}
 											</div>
 										) : (
 											<div className="address-display">
