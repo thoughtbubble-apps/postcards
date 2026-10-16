@@ -56,5 +56,16 @@
     "prNumber": 15,
     "baseRef": "codex/cloudflare-delivery",
     "headRef": "codex/trusted-worker-delivery-source"
+  },
+  "repositoryPrivate": false,
+  "staging": {
+    "permanent": true,
+    "cleanup": false,
+    "workerName": "postcards-pr-14",
+    "targetPrNumber": 14,
+    "accountId": "39294887f3cbf359bcdce0d9326f9382",
+    "origin": "https://postcards-pr-14.bsunter.workers.dev",
+    "scriptTag": "56411f9a3fcd48f38a38a553a9350ad5",
+    "createdOn": "2026-10-16T00:27:57.746095Z"
   }
 }
