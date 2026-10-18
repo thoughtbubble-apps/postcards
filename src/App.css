@@ -1,4 +1,3 @@
-@import url("https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap");
 
 /* ═══════════════════════════════════════════════════════
    DESIGN TOKENS
@@ -12,13 +11,14 @@
 	--glass: rgba(255, 255, 255, 0.55);
 	--glass-border: rgba(255, 255, 255, 0.45);
 	--primary: #1b3a4b;
+	--button-text: #ffffff;
 	--primary-hover: #24536e;
 	--primary-ghost: rgba(27, 58, 75, 0.07);
-	--accent: #c2693b;
+	--accent: #a85530;
 	--accent-hover: #a85530;
 	--accent-ghost: rgba(194, 105, 59, 0.08);
 	--text: #1c1917;
-	--text-muted: #78716c;
+	--text-muted: #625b55;
 	--card-back: #faf8f5;
 	--card-lines: #e7e0d8;
 	--border: #d6cebf;
@@ -50,13 +50,14 @@
 	--glass: rgba(38, 36, 42, 0.6);
 	--glass-border: rgba(255, 255, 255, 0.06);
 	--primary: #7eb8da;
+	--button-text: #19171a;
 	--primary-hover: #a3d1ec;
 	--primary-ghost: rgba(126, 184, 218, 0.1);
 	--accent: #e09860;
 	--accent-hover: #edb07a;
 	--accent-ghost: rgba(224, 152, 96, 0.1);
 	--text: #ede9e3;
-	--text-muted: #9a918a;
+	--text-muted: #a89f98;
 	--card-back: #27252b;
 	--card-lines: #35333a;
 	--border: #3a3840;
@@ -836,7 +837,7 @@ body {
 
 .btn-primary {
 	background: var(--primary);
-	color: #fff;
+	color: var(--button-text);
 	box-shadow: var(--shadow-sm);
 }
 
@@ -919,7 +920,7 @@ body {
 .btn-copy {
 	padding: 0.7rem 1.15rem;
 	background: var(--primary);
-	color: #fff;
+	color: var(--button-text);
 	border: none;
 	border-radius: var(--radius-sm);
 	font-family: var(--font-body);
@@ -1010,7 +1011,7 @@ body {
 	width: 1.75rem;
 	height: 1.75rem;
 	background: var(--primary);
-	color: #fff;
+	color: var(--button-text);
 	border-radius: 50%;
 	display: flex;
 	align-items: center;
@@ -1068,7 +1069,7 @@ body {
 
 .tutorial-btn-next {
 	background: var(--primary);
-	color: #fff;
+	color: var(--button-text);
 	box-shadow: var(--shadow-sm);
 }
 
@@ -1079,7 +1080,7 @@ body {
 
 .tutorial-btn-done {
 	background: var(--accent);
-	color: #fff;
+	color: var(--button-text);
 	box-shadow: var(--shadow-sm);
 }
 
@@ -1481,3 +1482,10 @@ body {
 		display: none;
 	}
 }
+
+.location-button {
+ border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: var(--radius-sm); cursor: pointer; padding: .35rem .5rem; font: inherit;
+}
+.location-input-wrapper { flex-wrap: wrap; }
+.location-input-wrapper .location-hint { top: .65rem; }
+.location-input-wrapper [role="status"] { color: var(--text); font-size: .75rem; }

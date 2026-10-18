@@ -43,3 +43,8 @@ GitHub Actions workflows for:
 - Running unit tests on pull requests
 - Cypress E2E tests
 - Lighthouse performance audits
+
+The bundled default Alps photograph comes from
+[Unsplash](https://images.unsplash.com/photo-1506905925346-21bda4d32df4) (image asset
+`photo-1506905925346-21bda4d32df4`). Its AVIF variants keep the initial card
+available without an external image request. Custom photo URLs are used unchanged.

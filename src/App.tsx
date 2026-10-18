@@ -1,8 +1,6 @@
 import type { LatLngTuple } from "leaflet";
-import { useEffect, useRef, useState } from "react";
-import { MapContainer, TileLayer, useMap } from "react-leaflet";
-
-import "leaflet/dist/leaflet.css";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
+const StampMap = lazy(() => import("./StampMap"));
 
 import "./App.css";
 
@@ -17,26 +15,10 @@ interface URLData {
 	isDefaultCard: boolean;
 }
 
-function MapUpdater({ position }: { position: LatLngTuple }) {
-	const map = useMap();
-	useEffect(() => {
-		map.setView(position, 9);
-	}, [map, position]);
-
-	useEffect(() => {
-		const invalidate = () => {
-			// Tiles can mis-render after viewport size or orientation change.
-			setTimeout(() => map.invalidateSize(), 150);
-		};
-		window.addEventListener("resize", invalidate);
-		window.addEventListener("orientationchange", invalidate);
-		return () => {
-			window.removeEventListener("resize", invalidate);
-			window.removeEventListener("orientationchange", invalidate);
-		};
-	}, [map]);
-	return null;
-}
+const defaultImage = new URL(`${import.meta.env.BASE_URL}images/alps-840.avif`, window.location.href).href;
+const defaultImageVariants = [400, 700, 840, 1680].map(
+	(width) => `${new URL(`${import.meta.env.BASE_URL}images/alps-${width}.avif`, window.location.href).href} ${width}w`,
+).join(", ");
 
 // Geocoding function using Nominatim
 async function geocodeAddress(
@@ -89,8 +71,7 @@ function App() {
 
 	const messagePlaceholder = "Write your message here...";
 	const defaultUrlData: URLData = {
-		frontImage:
-			"https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80",
+		frontImage: defaultImage,
 		latitude: 42.3528,
 		longitude: -83.1421,
 		message: "",
@@ -103,11 +84,13 @@ function App() {
 	const [flip, setFlip] = useState(false);
 	const [copied, setCopied] = useState(false);
 	const [isGeocoding, setIsGeocoding] = useState(false);
+	const [locationError, setLocationError] = useState("");
 	const [flipHintHidden, setFlipHintHidden] = useState(false);
 
 	const [state, setState] = useState(defaultUrlData);
 
 	useEffect(() => {
+		if (!urlDataString) return;
 		try {
 			const urlData: URLData = JSON.parse(urlDataString);
 			setState({ ...urlData, isDefaultCard: false });
@@ -116,19 +99,26 @@ function App() {
 		}
 	}, [urlDataString]);
 
-	const isDefaultCard = state.isDefaultCard;
-
-	useEffect(() => {
-		if (isDefaultCard) {
-			navigator.geolocation.getCurrentPosition((position) => {
+	const useMyLocation = () => {
+		setLocationError("");
+		if (!navigator.geolocation) {
+			setLocationError("Location is unavailable. Enter a city instead.");
+			return;
+		}
+		navigator.geolocation.getCurrentPosition(
+			(position) => {
 				setState((s) => ({
 					...s,
 					longitude: position.coords.longitude,
 					latitude: position.coords.latitude,
 				}));
-			});
-		}
-	}, [isDefaultCard]);
+			},
+			() =>
+				setLocationError(
+					"Could not access your location. Enter a city instead.",
+				),
+		);
+	};
 
 	const alreadySeenTutorial =
 		localStorage.getItem("pc:seenTutorial") === "true";
@@ -307,7 +297,14 @@ function App() {
 							)}
 						</div>
 
-						<div className="tutorial-progress" role="progressbar">
+						<div
+							className="tutorial-progress"
+							role="progressbar"
+							aria-label="Tutorial progress"
+							aria-valuemin={1}
+							aria-valuemax={steps.length}
+							aria-valuenow={currentStep + 1}
+						>
 							{steps.map((_, idx) => (
 								<div
 									key={idx}
@@ -380,6 +377,15 @@ function App() {
 				<div
 					className="flip-card"
 					onClick={handleFlip}
+					onKeyDown={(e) => {
+						if (
+							e.target === e.currentTarget &&
+							(e.key === "Enter" || e.key === " ")
+						) {
+							e.preventDefault();
+							handleFlip();
+						}
+					}}
 					role="button"
 					aria-label="Click to flip postcard"
 					tabIndex={0}
@@ -393,6 +399,13 @@ function App() {
 								<img
 									className="front-img"
 									src={state.frontImage}
+									srcSet={
+										state.frontImage === defaultImage
+											? defaultImageVariants
+											: undefined
+									}
+									sizes="(min-width: 900px) 840px, calc(100vw - 18px)"
+									fetchPriority="high"
 									alt="Postcard front"
 								/>
 								{state.isDefaultCard && !flip && (
@@ -411,154 +424,158 @@ function App() {
 											}}
 											aria-label="Postcard image URL"
 										/>
-										<div className="image-hint">
-											💡 Tap to edit image URL
-										</div>
+										<div className="image-hint">💡 Tap to edit image URL</div>
 									</>
-								)
-								}
+								)}
 							</figure>
 						</div>
 
 						{/* Back Side */}
 						<div className="flip-card-back">
 							{flip && (
-							<div className="back-content">
-								{/* Left Section - Message */}
-								<div className="left-section">
-									<div className="message-area">
-										<label className="message-label">Message</label>
-										{state.isDefaultCard ? (
-											<textarea
-												className="message-textarea"
-												placeholder={messagePlaceholder}
-												value={state.message}
-												onChange={(e) => {
-													setState({ ...state, message: e.target.value });
-												}}
-												onClick={(e) => {
-													e.stopPropagation();
-												}}
-												aria-label="Your message"
-											/>
-										) : (
-											<div className="message-display">
-												{state.message || "No message written"}
-											</div>
-										)}
-									</div>
-								</div>
-
-								<div className="divider" />
-
-								{/* Right Section - Stamp & Address */}
-								<div className="right-section">
-									<div className="stamp-section">
-										<div
-											className="stamp-container"
-											onClick={(e: React.MouseEvent) => {
-												e.preventDefault();
-												e.stopPropagation();
-											}}
-										>
-											<div className="stamp-border" />
-											<MapContainer
-												className="stamp-map"
-												center={position}
-												zoom={9}
-												zoomControl={false}
-												scrollWheelZoom={false}
-											>
-												<MapUpdater position={position} />
-												<TileLayer
-													url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-													attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>'
+								<div className="back-content">
+									{/* Left Section - Message */}
+									<div className="left-section">
+										<div className="message-area">
+											<label className="message-label">Message</label>
+											{state.isDefaultCard ? (
+												<textarea
+													className="message-textarea"
+													placeholder={messagePlaceholder}
+													value={state.message}
+													onChange={(e) => {
+														setState({ ...state, message: e.target.value });
+													}}
+													onClick={(e) => {
+														e.stopPropagation();
+													}}
+													aria-label="Your message"
 												/>
-											</MapContainer>
-											{isGeocoding && (
-												<div className="stamp-loading">
-													<div className="loading-spinner" />
+											) : (
+												<div className="message-display">
+													{state.message || "No message written"}
 												</div>
 											)}
 										</div>
 									</div>
 
-									<div className="address-section">
-										{state.isDefaultCard && (
-											<span className="address-label">Address</span>
-										)}
-										{state.isDefaultCard ? (
-											<input
-												type="text"
-												className="address-input"
-												placeholder="To: Recipient name"
-												value={state.to}
-												onChange={(e) => {
-													setState({ ...state, to: e.target.value });
-												}}
-												onClick={(e) => {
+									<div className="divider" />
+
+									{/* Right Section - Stamp & Address */}
+									<div className="right-section">
+										<div className="stamp-section">
+											<div
+												className="stamp-container"
+												onClick={(e: React.MouseEvent) => {
+													e.preventDefault();
 													e.stopPropagation();
 												}}
-												aria-label="Recipient name"
-											/>
-										) : (
-											<div className="address-display">
-												{state.to && `To: ${state.to}`}
+											>
+												<div className="stamp-border" />
+												<Suspense
+													fallback={
+														<div className="stamp-map" role="status">
+															Loading map…
+														</div>
+													}
+												>
+													<StampMap position={position} />
+												</Suspense>
+												{isGeocoding && (
+													<div className="stamp-loading">
+														<div className="loading-spinner" />
+													</div>
+												)}
 											</div>
-										)}
+										</div>
 
-										{state.isDefaultCard ? (
-											<div className="location-input-wrapper">
+										<div className="address-section">
+											{state.isDefaultCard && (
+												<span className="address-label">Address</span>
+											)}
+											{state.isDefaultCard ? (
 												<input
 													type="text"
 													className="address-input"
-													placeholder="Location (type city & press Enter)"
-													value={state.address}
+													placeholder="To: Recipient name"
+													value={state.to}
 													onChange={(e) => {
-														setState({
-															...state,
-															address: e.target.value,
-														});
+														setState({ ...state, to: e.target.value });
 													}}
-													onKeyDown={handleAddressChange}
 													onClick={(e) => {
 														e.stopPropagation();
 													}}
-													aria-label="Location"
+													aria-label="Recipient name"
 												/>
-												<span className="location-hint">↵</span>
-											</div>
-										) : (
-											<div className="address-display">
-												{state.address}
-											</div>
-										)}
+											) : (
+												<div className="address-display">
+													{state.to && `To: ${state.to}`}
+												</div>
+											)}
 
-										{state.isDefaultCard ? (
-											<input
-												type="text"
-												className="address-input"
-												placeholder="From: Your name"
-												value={state.sender}
-												onChange={(e) => {
-													setState({
-														...state,
-														sender: e.target.value,
-													});
-												}}
-												onClick={(e) => {
-													e.stopPropagation();
-												}}
-												aria-label="Sender name"
-											/>
-										) : (
-											<div className="address-display">
-												{state.sender && `From: ${state.sender}`}
-											</div>
-										)}
+											{state.isDefaultCard ? (
+												<div className="location-input-wrapper">
+													<input
+														type="text"
+														className="address-input"
+														placeholder="Location (type city & press Enter)"
+														value={state.address}
+														onChange={(e) => {
+															setState({
+																...state,
+																address: e.target.value,
+															});
+														}}
+														onKeyDown={handleAddressChange}
+														onClick={(e) => {
+															e.stopPropagation();
+														}}
+														aria-label="Location"
+													/>
+													<span className="location-hint">↵</span>
+													<button
+														type="button"
+														className="location-button"
+														onClick={(e) => {
+															e.stopPropagation();
+															useMyLocation();
+														}}
+													>
+														Use my location
+													</button>
+													{locationError && (
+														<span role="status">{locationError}</span>
+													)}
+												</div>
+											) : (
+												<div className="address-display">{state.address}</div>
+											)}
+
+											{state.isDefaultCard ? (
+												<input
+													type="text"
+													className="address-input"
+													placeholder="From: Your name"
+													value={state.sender}
+													onChange={(e) => {
+														setState({
+															...state,
+															sender: e.target.value,
+														});
+													}}
+													onClick={(e) => {
+														e.stopPropagation();
+													}}
+													aria-label="Sender name"
+												/>
+											) : (
+												<div className="address-display">
+													{state.sender && `From: ${state.sender}`}
+												</div>
+											)}
+										</div>
 									</div>
 								</div>
-							</div>
 							)}
 						</div>
 					</div>
