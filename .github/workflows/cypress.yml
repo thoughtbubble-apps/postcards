@@ -21,17 +21,3 @@ jobs:
         with:
           start: bun run dev
           wait-on: "http://localhost:5173"
-
-      - uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: cypress-screenshots
-          path: cypress/screenshots
-          retention-days: 3
-
-      - uses: actions/upload-artifact@v4
-        if: failure() || cancelled()
-        with:
-          name: cypress-videos
-          path: cypress/videos
-          retention-days: 3
