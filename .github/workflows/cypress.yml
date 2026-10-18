@@ -27,9 +27,11 @@ jobs:
         with:
           name: cypress-screenshots
           path: cypress/screenshots
+          retention-days: 3
 
       - uses: actions/upload-artifact@v4
-        if: always()
+        if: failure() || cancelled()
         with:
           name: cypress-videos
           path: cypress/videos
+          retention-days: 3
