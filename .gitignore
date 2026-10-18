@@ -31,3 +31,5 @@ playwright-report/
 .lighthouseci/
 cypress/screenshots/
 cypress/videos/
+
+/release/

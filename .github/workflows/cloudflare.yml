@@ -1,7 +1,7 @@
 name: Cloudflare delivery
 on:
   pull_request:
-    branches: [master]
+    branches: [master, codex/cloudflare-delivery]
   push:
     branches: [master]
 permissions: {}
@@ -11,7 +11,7 @@ concurrency:
 jobs:
   checks:
     name: postcards / build and core flow
-    if: github.repository_id == '277046734' && (github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.base.repo.id == 277046734 && github.event.pull_request.head.repo.id == 277046734))
+    if: github.repository_id == '277046734' && ((github.event_name == 'push' && github.ref == 'refs/heads/master') || (github.event_name == 'pull_request' && github.event.pull_request.base.repo.id == 277046734 && github.event.pull_request.head.repo.id == 277046734 && (github.event.pull_request.base.ref == 'master' || (github.event.pull_request.number == 15 && github.event.pull_request.base.ref == 'codex/cloudflare-delivery' && github.event.pull_request.head.ref == 'codex/trusted-worker-delivery-source'))))
     runs-on:
       group: approved-public-ci
       labels: ${{ vars.PUBLIC_CI_RUNNER_LABEL == 'public-app-ci-prod' && 'public-app-ci-prod' || 'public-ci-onboarding-required' }}
@@ -36,51 +36,31 @@ jobs:
           bun-version: '1.4.2'
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
-          node-version: '24'
-      - run: bun test tests/workflow-safety.test.mjs
+          node-version: '24.18.0'
+      - run: bun test tests/workflow-safety.test.mjs tests/source-admission.test.ts
+      - run: bun install --cwd scripts/cd/tooling --frozen-lockfile --ignore-scripts
+      - run: node --test scripts/release/*.test.mjs scripts/cd/*.test.mjs
+      - run: bun test scripts/cd/workflow.test.ts
       - run: bun install --frozen-lockfile
       - run: bunx playwright install chromium
       - run: bun run build
       - run: bun run test && bun run test:worker
       - name: Browser core flow on local Worker
         run: bun run test:browser
-      - name: Prepare isolated target and source identity
+      - name: Package complete immutable Worker and asset inventory
         env:
-          MODE: ${{ github.event_name == 'pull_request' && 'preview' || 'production' }}
+          SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: node scripts/prepare-delivery.mjs "$MODE" "$PR_NUMBER"
-      - run: bunx wrangler deploy --config wrangler.jsonc --dry-run
-      - run: node scripts/build-manifest.mjs
-      - name: Preserve immutable validated build
+        run: node scripts/release/artifact.mjs
+      - name: Preserve digest-bound complete release
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: build-${{ github.event.pull_request.head.sha || github.sha }}
-          include-hidden-files: true
+          name: worker-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: release/
           if-no-files-found: error
           retention-days: 7
-          path: |
-            build/
-            wrangler.jsonc
-            .delivery-manifest.json
-  # No trusted deployment route has been accepted. This job carries no secrets
-  # and deliberately blocks ci-required until a separately reviewed handoff.
-  deploy:
-    name: postcards / deploy exact tested SHA
-    if: github.repository_id == '277046734' && (github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.base.repo.id == 277046734 && github.event.pull_request.head.repo.id == 277046734))
-    needs: [checks, lighthouse]
-    runs-on:
-      group: approved-public-ci
-      labels: ${{ vars.PUBLIC_CI_RUNNER_LABEL == 'public-app-ci-prod' && 'public-app-ci-prod' || 'public-ci-onboarding-required' }}
-    timeout-minutes: 5
-    permissions: {}
-    steps:
-      - name: Trusted deployment route required
-        run: |
-          echo '::error::Trusted deployment route required; the public build profile cannot receive provider credentials.'
-          echo 'Deployment remains blocked pending a separately reviewed identity and execution route. No credentials or runner labels are configured by this workflow.' >> "$GITHUB_STEP_SUMMARY"
-          exit 1
   lighthouse:
-    if: github.repository_id == '277046734' && (github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.base.repo.id == 277046734 && github.event.pull_request.head.repo.id == 277046734))
+    if: github.repository_id == '277046734' && ((github.event_name == 'push' && github.ref == 'refs/heads/master') || (github.event_name == 'pull_request' && github.event.pull_request.base.repo.id == 277046734 && github.event.pull_request.head.repo.id == 277046734 && (github.event.pull_request.base.ref == 'master' || (github.event.pull_request.number == 15 && github.event.pull_request.base.ref == 'codex/cloudflare-delivery' && github.event.pull_request.head.ref == 'codex/trusted-worker-delivery-source'))))
     name: Postcards / unchanged Lighthouse assertions
     needs: checks
     runs-on:
@@ -90,6 +70,12 @@ jobs:
     permissions:
       contents: read
     steps:
+      - name: Verify runner isolation
+        run: |
+          test "$(uname -s)" = Linux
+          test "$(id -u)" -ne 0
+          test ! -S /var/run/docker.sock
+          test ! -e /var/run/secrets/kubernetes.io/serviceaccount/token
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
@@ -99,13 +85,21 @@ jobs:
           bun-version: '1.4.2'
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
-          node-version: '24'
+          node-version: '24.18.0'
       - run: bun install --frozen-lockfile
       - run: bunx playwright install chromium
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
-          name: build-${{ github.event.pull_request.head.sha || github.sha }}
-      - run: node scripts/build-manifest.mjs --verify
+          name: worker-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: release/
+      - name: Verify exact complete source artifact before unchanged audit
+        env:
+          SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          node scripts/release/artifact.mjs --verify
+          test ! -e build
+          cp -R release/assets build
       - name: Preserve unchanged Lighthouse assertions
         run: |
           CHROME_PATH=$(node --input-type=module -e 'import {chromium} from "@playwright/test";console.log(chromium.executablePath())')
@@ -113,8 +107,8 @@ jobs:
           bun run test:lighthouse
   required:
     name: ci-required
-    if: always() && (github.repository_id == '277046734' && (github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.base.repo.id == 277046734 && github.event.pull_request.head.repo.id == 277046734)))
-    needs: [checks, lighthouse, deploy]
+    if: always() && (github.repository_id == '277046734' && ((github.event_name == 'push' && github.ref == 'refs/heads/master') || (github.event_name == 'pull_request' && github.event.pull_request.base.repo.id == 277046734 && github.event.pull_request.head.repo.id == 277046734 && (github.event.pull_request.base.ref == 'master' || (github.event.pull_request.number == 15 && github.event.pull_request.base.ref == 'codex/cloudflare-delivery' && github.event.pull_request.head.ref == 'codex/trusted-worker-delivery-source')))))
+    needs: [checks, lighthouse]
     runs-on:
       group: approved-public-ci
       labels: ${{ vars.PUBLIC_CI_RUNNER_LABEL == 'public-app-ci-prod' && 'public-app-ci-prod' || 'public-ci-onboarding-required' }}
@@ -122,6 +116,5 @@ jobs:
     steps:
       - env:
           CHECKS: ${{ needs.checks.result }}
-          DEPLOY: ${{ needs.deploy.result }}
           LIGHTHOUSE: ${{ needs.lighthouse.result }}
-        run: test "$CHECKS" = success && test "$LIGHTHOUSE" = success && test "$DEPLOY" = success
+        run: test "$CHECKS" = success && test "$LIGHTHOUSE" = success
