@@ -1,11 +1,15 @@
 name: Lighthouse
 on: [push, pull_request]
+permissions:
+  contents: read
 jobs:
   CI:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -20,7 +24,7 @@ jobs:
         uses: treosh/lighthouse-ci-action@v12
         with:
           configPath: "./lighthouserc.json"
-          temporaryPublicStorage: true
-          uploadArtifacts: true
+          temporaryPublicStorage: false
+          uploadArtifacts: false
           urls: |
             http://localhost/
